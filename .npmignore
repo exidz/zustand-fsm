@@ -1,0 +1,24 @@
+# Source
+src/
+tests/
+scripts/
+coverage/
+
+# Config files
+.github/
+.gitignore
+jest.config.js
+tsconfig.json
+tsup.config.ts
+.prettierrc
+.eslintrc
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# Build artifacts
+dist/*.test.*
