@@ -1,6 +1,6 @@
 {
   "name": "zustand-fsm",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "A lightweight state machine implementation for Zustand",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
