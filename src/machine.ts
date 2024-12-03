@@ -1,114 +1,127 @@
 import { create } from "zustand";
+import { combine } from "zustand/middleware";
 
-type EventConfig<T> = {
-  target: string;
+type EventCfg<T> = {
+  target?: string;
   guard?: (ctx: T) => boolean;
-  reducer?: (ctx: T, payload?: Partial<T>) => T;
+  reducer?: (ctx: T, p?: Partial<T>) => T;
 };
 
-type StateConfig<T> = {
+type StateCfg<T> = {
   entry?: (ctx: T) => T;
   exit?: (ctx: T) => T;
-  on?: Record<string, EventConfig<T>>;
+  on?: Record<string, EventCfg<T>>;
   parent?: string;
 };
 
-type Config<T> = {
+type Cfg<T> = {
   context: T;
-  states: Record<string, StateConfig<T>>;
+  states: Record<string, StateCfg<T>>;
 };
 
 type Store<T> = {
   current: string;
   context: T;
   previous: string | null;
-  send: (evt: string, payload?: Partial<T>) => void;
+  send: (evt: string, p?: Partial<T>) => void;
   getSnapshot: () => { state: string; context: T };
   matches: (state: string) => boolean;
   reset: () => void;
 };
 
-export class Machine<T extends object> {
-  private cfg: Config<T>;
-  private init: string;
-  private hist: Array<{ state: string; ctx: T }> = [];
-  private initCtx: T;
-  private mw: Array<(evt: string, ctx: T, payload?: Partial<T>) => void> = [];
+export function createMachine<T extends object>(cfg: Cfg<T>) {
+  const initState = Object.keys(cfg.states)[0];
+  const initCtx = { ...cfg.context };
+  let history: Array<{ state: string; ctx: T }> = [];
+  const listeners: Array<(evt: string, ctx: T, p?: Partial<T>) => void> = [];
 
-  constructor(config: Config<T>) {
-    this.init = Object.keys(config.states)[0];
-    this.cfg = config;
-    this.initCtx = { ...config.context };
-  }
+  const watch = (fn: (evt: string, ctx: T, p?: Partial<T>) => void) => {
+    listeners.push(fn);
+    return { watch };
+  };
 
-  use(fn: (evt: string, ctx: T, payload?: Partial<T>) => void) {
-    this.mw.push(fn);
-    return this;
-  }
+  const getHistory = () => [...history];
 
-  store() {
-    return create<Store<T>>((set, get: () => Store<T>) => ({
-      current: this.init,
-      context: { ...this.initCtx },
-      previous: null,
+  const store = (
+    mw: Array<(cfg: any) => (set: any, get: any, api: any) => any> = []
+  ) => {
+    const str = create(
+      mw.reduce(
+        (prev, curr) => curr(prev),
+        combine(
+          {
+            current: initState,
+            context: initCtx,
+            previous: null,
+            send: () => {},
+            getSnapshot: () => ({ state: "", context: {} as T }),
+            matches: () => false,
+            reset: () => void 0,
+          } as Store<T>,
+          (set, get: () => Store<T>) => ({
+            send: (evt: string, p?: Partial<T>) => {
+              const { current, context } = get();
+              const state = cfg.states[current];
+              const event = state.on?.[evt];
 
-      send: (evt: string, payload?: Partial<T>) => {
-        const { current, context } = get();
-        const state = this.cfg.states[current];
-        const event = state.on?.[evt];
+              if (!event || (event.guard && !event.guard(context))) return;
 
-        if (!event || (event.guard && !event.guard(context))) return;
+              listeners.forEach((m) => m(evt, context, p));
 
-        this.mw.forEach((m) => m(evt, context, payload));
+              let ctx = state.exit
+                ? state.exit({ ...context })
+                : { ...context };
+              if (event.reducer) ctx = event.reducer(ctx, p);
 
-        let ctx = state.exit ? state.exit({ ...context }) : { ...context };
+              if (event.target) {
+                const target = cfg.states[event.target];
+                if (target.entry) ctx = target.entry(ctx);
 
-        if (event.reducer) ctx = event.reducer(ctx, payload);
+                history.push({ state: current, ctx: context });
+                set({
+                  previous: current,
+                  current: event.target,
+                  context: ctx,
+                });
+              } else {
+                set({ context: ctx });
+              }
+            },
 
-        if (event.target) {
-          const target = this.cfg.states[event.target];
-          if (target.entry) ctx = target.entry(ctx);
+            getSnapshot: () => ({
+              state: get().current,
+              context: get().context,
+            }),
 
-          this.hist.push({ state: current, ctx: context });
-          set({
-            previous: current,
-            current: event.target,
-            context: ctx,
-          });
-        }
-      },
+            matches: (state: string) => {
+              let curr = get().current;
+              let currState = cfg.states[curr];
 
-      getSnapshot: () => ({
-        state: get().current,
-        context: get().context,
-      }),
+              if (curr === state) return true;
 
-      matches: (state: string) => {
-        let current = get().current;
-        let currentState = this.cfg.states[current];
+              while (currState?.parent) {
+                if (currState.parent === state) return true;
+                currState = cfg.states[currState.parent];
+              }
 
-        if (current === state) return true;
+              return false;
+            },
 
-        while (currentState?.parent) {
-          if (currentState.parent === state) return true;
-          currentState = this.cfg.states[currentState.parent];
-        }
+            reset: () => {
+              set({
+                current: initState,
+                context: { ...initCtx },
+                previous: null,
+              });
+              history = [];
+            },
+          })
+        )
+      )
+    );
 
-        return false;
-      },
+    return str;
+  };
 
-      reset: () => {
-        set({
-          current: this.init,
-          context: { ...this.initCtx },
-          previous: null,
-        });
-        this.hist = [];
-      },
-    }));
-  }
-
-  getHistory() {
-    return [...this.hist];
-  }
+  return { watch, store, getHistory };
 }
