@@ -2,9 +2,9 @@
   "name": "zustand-fsm",
   "version": "0.2.0",
   "description": "A lightweight state machine implementation for Zustand",
-  "main": "dist/index.js",
-  "module": "dist/index.mjs",
-  "types": "dist/index.d.ts",
+  "main": "dist/machine.js",
+  "module": "dist/machine.mjs",
+  "types": "dist/machine.d.ts",
   "files": [
     "dist",
     "README.md"
@@ -69,15 +69,15 @@
   "sideEffects": false,
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "require": "./dist/index.js",
-      "import": "./dist/index.mjs"
+      "types": "./dist/machine.d.ts",
+      "require": "./dist/machine.js",
+      "import": "./dist/machine.mjs"
     }
   },
   "typesVersions": {
     "*": {
       "*": [
-        "dist/index.d.ts"
+        "dist/machine.d.ts"
       ]
     }
   }
