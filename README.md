@@ -131,7 +131,7 @@ const useStore = machine.store([devtools, persist]);
 Adds a watcher function to observe state transitions. Useful for logging, analytics, or side effects.
 
 ```typescript
-machine.watch((event, context, payload) => {
+machine.watch(({event, context, payload}) => {
   console.log("Event:", event);
   console.log("Context:", context);
   console.log("Payload:", payload);
