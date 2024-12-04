@@ -111,7 +111,7 @@ describe('State Machine', () => {
     const store = machine.store();
     const mockFn = jest.fn();
 
-    machine.watch((evt, ctx) => mockFn(evt, ctx));
+    machine.watch(({event, context}) => mockFn(event, context));
     store.getState().send('NEXT');
 
     expect(mockFn).toHaveBeenCalledWith('NEXT', expect.any(Object));
