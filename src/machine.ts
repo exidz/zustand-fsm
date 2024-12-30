@@ -19,7 +19,7 @@ type Store<T> = {
   context: T;
   previous: string | null;
   send: (evt: string, p?: Partial<T>) => void;
-  getSnapshot: () => { state: string; context: T };
+  getSnapshot: () => { current: string; context: T };
   matches: (state: string) => boolean;
   reset: () => void;
 };
@@ -54,7 +54,7 @@ export const createMachine = <T extends object>(cfg: {
         context: initContext,
         previous: null,
         send: () => {},
-        getSnapshot: () => ({ state: "", context: {} as T }),
+        getSnapshot: () => ({ current: "", context: {} as T }),
         matches: () => false,
         reset: () => void 0,
       };
@@ -66,7 +66,6 @@ export const createMachine = <T extends object>(cfg: {
           const event = state.on?.[evt];
 
           if (!event || (event.guard && !event.guard(context))) return;
-          watchFn?.({ event: evt, context, current, payload: p });
 
           let ctx = state.exit ? state.exit({ ...context }) : { ...context };
           if (event.reducer) ctx = event.reducer(ctx, p);
@@ -79,9 +78,15 @@ export const createMachine = <T extends object>(cfg: {
           } else {
             set({ context: ctx });
           }
+          watchFn?.({
+            event: evt,
+            context: get().context,
+            current: get().current,
+            payload: p,
+          });
         },
         getSnapshot: () => ({
-          state: get().current,
+          current: get().current,
           context: get().context,
         }),
         matches: (state: string) => {

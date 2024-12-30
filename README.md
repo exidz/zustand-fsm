@@ -168,7 +168,7 @@ Returns the current state and context.
 
 ```typescript
 const snapshot = useStore.getState().getSnapshot();
-console.log(snapshot.state); // Current state
+console.log(snapshot.current); // Current state
 console.log(snapshot.context); // Current context
 ```
 
